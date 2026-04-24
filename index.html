@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Guedes Digital</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;900&family=Barlow+Condensed:wght@700;900&display=swapdisplay=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -431,8 +434,59 @@ var DEF = {
   ]
 };
 
-function load(){var s={};try{s=JSON.parse(localStorage.getItem('gd_cfg')||'{}');}catch(e){}return Object.assign({},DEF,s,{slides:s.slides||DEF.slides,plans:s.plans||DEF.plans});}
-function saveData(c){try{localStorage.setItem('gd_cfg',JSON.stringify(c));}catch(e){}}
+// ---- FIREBASE ----
+var firebaseConfig = {
+  apiKey: "AIzaSyAelR0erIz6ojkjFT-5qIEzjI7xB7HVu0o",
+  authDomain: "mh-closet.firebaseapp.com",
+  databaseURL: "https://mh-closet-default-rtdb.firebaseio.com",
+  projectId: "mh-closet",
+  storageBucket: "mh-closet.firebasestorage.app",
+  messagingSenderId: "929266517720",
+  appId: "1:929266517720:web:534e00a619d4ac84b239ad"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+var cfgRef = db.ref('guedes-digital/config');
+var pwdRef = db.ref('guedes-digital/senha');
+
+function load(callback){
+  cfgRef.once('value', function(snap){
+    var data = snap.val();
+    var c = Object.assign({}, DEF, data||{}, {
+      slides: (data&&data.slides) ? Object.values(data.slides) : DEF.slides,
+      plans:  (data&&data.plans)  ? Object.values(data.plans)  : DEF.plans
+    });
+    callback(c);
+  });
+}
+
+function saveData(c){
+  var toSave = Object.assign({}, c);
+  // Firebase não aceita arrays diretamente — converte para objeto
+  if(c.slides) toSave.slides = Object.assign({}, c.slides);
+  if(c.plans)  toSave.plans  = Object.assign({}, c.plans);
+  cfgRef.set(toSave);
+}
+
+function getPass(callback){
+  pwdRef.once('value', function(snap){
+    callback(snap.val() || 'guedes2025');
+  });
+}
+function savePass(p){ pwdRef.set(p); }
+
+// Escuta mudanças em tempo real e aplica para todos
+cfgRef.on('value', function(snap){
+  var data = snap.val();
+  if(!data) return;
+  var c = Object.assign({}, DEF, data, {
+    slides: data.slides ? Object.values(data.slides) : DEF.slides,
+    plans:  data.plans  ? Object.values(data.plans)  : DEF.plans
+  });
+  applyConfig(c);
+  applyFont(c.font||'Poppins');
+});
+
 function wppUrl(n,m){return 'https://wa.me/'+n+'?text='+encodeURIComponent(m);}
 
 // ---- CARROSSEL ----
@@ -699,16 +753,20 @@ function savePass(p){ localStorage.setItem('gd_pwd', p); }
 
 function checkPwd(){
   var val = document.getElementById('admin-pwd-input').value;
-  if(val === getPass()){
-    document.getElementById('admin-login').style.display='none';
-    document.getElementById('admin-content').style.display='block';
-    document.getElementById('pwd-error').style.display='none';
-    document.getElementById('admin-pwd-input').value='';
-  } else {
-    document.getElementById('pwd-error').style.display='block';
-    document.getElementById('admin-pwd-input').value='';
-    document.getElementById('admin-pwd-input').focus();
-  }
+  getPass(function(correct){
+    if(val === correct){
+      document.getElementById('admin-login').style.display='none';
+      document.getElementById('admin-content').style.display='block';
+      document.getElementById('pwd-error').style.display='none';
+      document.getElementById('admin-pwd-input').value='';
+      // Carrega dados do Firebase no painel
+      load(function(c){ fillPanel(c); });
+    } else {
+      document.getElementById('pwd-error').style.display='block';
+      document.getElementById('admin-pwd-input').value='';
+      document.getElementById('admin-pwd-input').focus();
+    }
+  });
 }
 
 // ---- 4 CLIQUES NA LOGO (silencioso) ----
@@ -720,7 +778,6 @@ document.getElementById('logo-btn').addEventListener('click',function(){
     clickTimer=setTimeout(function(){clickCount=0;},2000);
   } else {
     clickCount=0;clearTimeout(clickTimer);
-    fillPanel(load());
     document.getElementById('admin-login').style.display='block';
     document.getElementById('admin-content').style.display='none';
     document.getElementById('pwd-error').style.display='none';
@@ -761,16 +818,19 @@ document.getElementById('admin-save-btn').addEventListener('click',function(){
   } else {
     pwdMsg.style.display = 'none';
   }
-  // Salvar configurações
-  var c=readPanel();saveData(c);applyConfig(c);applyFont(c.font||'Poppins');
+  // Salvar configurações no Firebase
+  var c=readPanel();
+  saveData(c);
+  applyFont(c.font||'Poppins');
   var t=document.getElementById('admin-toast');t.style.display='block';
   setTimeout(function(){t.style.display='none';},3000);
 });
 
 // ---- INIT ----
-var _cfg = load();
-applyConfig(_cfg);
-applyFont(_cfg.font||'Poppins');
+// O Firebase listener já carrega e aplica os dados automaticamente
+// Enquanto carrega, aplica os defaults
+applyConfig(DEF);
+applyFont(DEF.font||'Poppins');
 </script>
 </body>
 </html>
