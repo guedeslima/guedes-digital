@@ -461,17 +461,34 @@ function buildCarousel(slides){
     dot.addEventListener('click',function(){goSlide(i);});
     dots.appendChild(dot);
   });
+  // touch swipe
+  var touchStartX=0;
+  track.addEventListener('touchstart',function(e){touchStartX=e.touches[0].clientX;},{passive:true});
+  track.addEventListener('touchend',function(e){
+    var diff=touchStartX-e.changedTouches[0].clientX;
+    if(Math.abs(diff)>40){ goSlide(diff>0?carIdx+1:carIdx-1); }
+  },{passive:true});
   goSlide(0);
 }
 
 function goSlide(n){
   carIdx=((n%carTotal)+carTotal)%carTotal;
-  document.getElementById('carousel-track').style.transform='translateX(-'+carIdx+'00%)';
+  var carousel=document.getElementById('carousel');
+  var w=carousel.offsetWidth;
+  document.getElementById('carousel-track').style.transform='translateX(-'+(carIdx*w)+'px)';
   var dots=document.querySelectorAll('.carousel-dot');
   dots.forEach(function(d,i){d.classList.toggle('active',i===carIdx);});
   clearTimeout(carTimer);
   carTimer=setTimeout(function(){goSlide(carIdx+1);},4500);
 }
+
+window.addEventListener('resize',function(){
+  if(carTotal>0){
+    var carousel=document.getElementById('carousel');
+    var w=carousel.offsetWidth;
+    document.getElementById('carousel-track').style.transform='translateX(-'+(carIdx*w)+'px)';
+  }
+});
 
 document.getElementById('car-prev').addEventListener('click',function(){goSlide(carIdx-1);});
 document.getElementById('car-next').addEventListener('click',function(){goSlide(carIdx+1);});
