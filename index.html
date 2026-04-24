@@ -470,7 +470,8 @@ function saveData(c){
 
 function getPass(callback){
   pwdRef.once('value', function(snap){
-    callback(snap.val() || 'guedes2025');
+    var p = snap.val();
+    callback(p && p.length > 0 ? p : 'guedes2025');
   });
 }
 function savePass(p){ pwdRef.set(p); }
@@ -747,10 +748,6 @@ function applyFont(fontName){
 }
 
 // ---- SENHA ADMIN ----
-var DEFAULT_PASS = 'guedes2025';
-function getPass(){ return localStorage.getItem('gd_pwd') || DEFAULT_PASS; }
-function savePass(p){ localStorage.setItem('gd_pwd', p); }
-
 function checkPwd(){
   var val = document.getElementById('admin-pwd-input').value;
   getPass(function(correct){
